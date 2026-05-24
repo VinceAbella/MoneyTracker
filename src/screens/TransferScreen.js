@@ -13,9 +13,12 @@ export default function TransferScreen({ navigation }) {
   const [amount,  setAmount]      = useState('');
   const [currency,setCurrency]    = useState(appData.baseCurrency);
   const [note,    setNote]        = useState('');
+  const [useCustomRate, setUseCustomRate] = useState(false);
+  const [customRate, setCustomRate]       = useState('');
   const s = makeStyles(theme);
 
   const toBase = (a,c) => { const r=appData.exchangeRates[c]||1,br=appData.exchangeRates[appData.baseCurrency]||1; return (a/r)*br; };
+  const fmtBase = (a) => new Intl.NumberFormat('en-PH',{style:'currency',currency:appData.baseCurrency}).format(a);
   const fmt = (a,c) => new Intl.NumberFormat('en-PH',{style:'currency',currency:c||appData.baseCurrency}).format(a);
 
   const totalIncomePool = (appData.incomes||[]).reduce((s,i)=>s+toBase(i.amount,i.currency),0);
@@ -64,13 +67,24 @@ export default function TransferScreen({ navigation }) {
       const deductInFrom = (amt/selRate)*fromRate;
       const creditInTo   = (amt/selRate)*toRate;
       if(from.balance<deductInFrom){Alert.alert('Insufficient Funds',`${from.name} only has ${fmt(from.balance,from.currency)}\nThis transfer costs ${fmt(deductInFrom,from.currency)}`);return;}
-      const updAccs=appData.accounts.map(a=>{
-        if(a.name===fromAccount) return{...a,balance:a.balance-deductInFrom};
-        if(a.name===toAccount)   return{...a,balance:a.balance+creditInTo};
+      const updAccs = appData.accounts.map(a => {
+        if (a.name === fromAccount) return { ...a, balance: a.balance - deductInFrom };
+        if (a.name === toAccount) return { ...a, balance: a.balance + creditInTo };
         return a;
       });
-      saveData({accounts:updAccs});
-      Alert.alert('✅ Transferred',`${fmt(amt,currency)} from ${fromAccount} → ${toAccount}\n(-${fmt(deductInFrom,from.currency)} / +${fmt(creditInTo,to.currency)})`,[{text:'OK',onPress:()=>navigation.goBack()}]);
+
+      const transferRecord = {
+        id: Date.now().toString(),
+        amount: amt,
+        currency,
+        fromAccount,
+        toAccount,
+        note,
+        date: new Date().toISOString().split('T')[0],
+      };
+
+      saveData({ transfers: [...(appData.transfers || []), transferRecord], accounts: updAccs });
+      Alert.alert('✅ Transferred', `${fmt(amt, currency)} from ${fromAccount} → ${toAccount}\n(-${fmt(deductInFrom, from.currency)} / +${fmt(creditInTo, to.currency)})`, [{ text: 'OK', onPress: () => navigation.goBack() }]);
     }
   };
 
@@ -161,6 +175,29 @@ export default function TransferScreen({ navigation }) {
             {to  &&<Text style={s.convLine}>Credit to {to.name}: +{fmt(credit,to.currency)}</Text>}
           </View>;
         })()}
+
+        {/* Custom Rate Override */}
+        <View style={s.customRateRow}>
+          <TouchableOpacity style={[s.customRateToggle, useCustomRate && s.customRateToggleOn]} onPress={()=>setUseCustomRate(!useCustomRate)}>
+            <Ionicons name={useCustomRate ? 'checkmark-circle' : 'radio-button-off'} size={18} color={useCustomRate ? '#fff' : theme.subtext}/>
+            <Text style={[s.customRateTxt, useCustomRate && {color:'#fff'}]}>Use custom exchange rate</Text>
+          </TouchableOpacity>
+        </View>
+        {useCustomRate && (()=>{
+          const currencyRate = appData.exchangeRates[currency] || 1;
+          const baseRate = appData.exchangeRates[appData.baseCurrency] || 1;
+          const liveRate = (baseRate / currencyRate).toFixed(4);
+          return (
+            <View style={s.customRateInput}>
+              <Text style={s.lbl}>1 {currency} = ? {appData.baseCurrency} (on transfer date)</Text>
+              {liveRate && <Text style={s.convNote}>Live rate: 1 {currency} = {liveRate} {appData.baseCurrency}</Text>}
+              <TextInput style={s.input} value={customRate} onChangeText={setCustomRate} keyboardType="numeric" placeholder={`e.g. ${liveRate || '1.0'}`} placeholderTextColor={theme.subtext}/>
+              {parseFloat(amount)>0 && parseFloat(customRate)>0 && currency!==appData.baseCurrency && (
+                <Text style={[s.convNote,{color:theme.warning}]}>With custom rate: {fmt(parseFloat(amount),currency)} = {fmtBase(parseFloat(amount)*parseFloat(customRate))}</Text>
+              )}
+            </View>
+          );
+        })()}
       </View>
 
       {/* Note */}
@@ -207,6 +244,11 @@ function makeStyles(t) {
     chipTxtSel:{color:'#fff',fontWeight:'700'},
     convPreview:{backgroundColor:t.background,borderRadius:10,padding:12,marginTop:8,gap:4},
     convLine:{fontSize:13,color:t.text,fontWeight:'600'},
+    customRateRow:{marginBottom:14},
+    customRateToggle:{flexDirection:'row',alignItems:'center',gap:8,padding:12,borderRadius:12,borderWidth:1,borderColor:t.border,backgroundColor:t.card},
+    customRateToggleOn:{backgroundColor:t.primary,borderColor:t.primary},
+    customRateTxt:{fontSize:13,fontWeight:'600',color:t.text},
+    customRateInput:{backgroundColor:t.card,borderRadius:10,padding:12,marginBottom:14},
     saveBtn:{backgroundColor:t.primary,padding:18,borderRadius:16,alignItems:'center',flexDirection:'row',justifyContent:'center',gap:10,marginTop:16},
     saveTxt:{fontSize:17,fontWeight:'700',color:'#fff'},
   });

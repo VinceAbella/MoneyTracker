@@ -54,7 +54,12 @@ export default function BudgetScreen() {
   const [addSubCurrency, setAddSubCurrency] = useState(appData.baseCurrency);
   const [addSubAccount, setAddSubAccount] = useState('');
 
+  // Custom exchange rate override
+  const [useCustomRate, setUseCustomRate] = useState(false);
+  const [customRate, setCustomRate]       = useState('');
+
   const toBase = (a, c) => { const r=appData.exchangeRates[c]||1, br=appData.exchangeRates[appData.baseCurrency]||1; return (a/r)*br; };
+  const fmtBase = (a) => new Intl.NumberFormat('en-PH',{ style:'currency', currency:appData.baseCurrency, minimumFractionDigits:2 }).format(a);
   const fmt = (a, c) => new Intl.NumberFormat('en-PH',{ style:'currency', currency:c||appData.baseCurrency, minimumFractionDigits:2 }).format(a);
 
   const totalIncome    = (appData.incomes||[]).reduce((sum,i)=>sum+toBase(i.amount,i.currency),0);
@@ -73,6 +78,7 @@ export default function BudgetScreen() {
     setEditingBudget(null);
     setStep(1); setSelectedCat(null); setSelectedSub(''); setCustomSub('');
     setAllocated(''); setBudgetCurrency(appData.baseCurrency); setLinkedAccount('');
+    setUseCustomRate(false); setCustomRate('');
     setModal(true);
   };
 
@@ -85,6 +91,7 @@ export default function BudgetScreen() {
     setAllocated(String(item.allocated));
     setBudgetCurrency(item.currency||appData.baseCurrency);
     setLinkedAccount(item.linkedAccount||'');
+    setUseCustomRate(false); setCustomRate('');
     setStep(2);
     setModal(true);
   };
@@ -290,6 +297,29 @@ export default function BudgetScreen() {
               </ScrollView>
               {budgetCurrency!==appData.baseCurrency&&parseFloat(allocated)>0&&<Text style={s.convNote}>≈ {fmt(toBase(parseFloat(allocated),budgetCurrency))} base currency</Text>}
 
+              {/* Custom Rate Override */}
+              <View style={s.customRateRow}>
+                <TouchableOpacity style={[s.customRateToggle, useCustomRate && s.customRateToggleOn]} onPress={()=>setUseCustomRate(!useCustomRate)}>
+                  <Ionicons name={useCustomRate ? 'checkmark-circle' : 'radio-button-off'} size={18} color={useCustomRate ? '#fff' : theme.subtext}/>
+                  <Text style={[s.customRateTxt, useCustomRate && {color:'#fff'}]}>Use custom exchange rate</Text>
+                </TouchableOpacity>
+              </View>
+              {useCustomRate && (()=>{
+                const budgetCurrencyRate = appData.exchangeRates[budgetCurrency] || 1;
+                const baseRate = appData.exchangeRates[appData.baseCurrency] || 1;
+                const liveRate = (baseRate / budgetCurrencyRate).toFixed(4);
+                return (
+                  <View style={s.customRateInput}>
+                    <Text style={s.lbl}>1 {budgetCurrency} = ? {appData.baseCurrency} (on budget date)</Text>
+                    {liveRate && <Text style={s.convNote}>Live rate: 1 {budgetCurrency} = {liveRate} {appData.baseCurrency}</Text>}
+                    <TextInput style={s.input} value={customRate} onChangeText={setCustomRate} keyboardType="numeric" placeholder={`e.g. ${liveRate || '1.0'}`} placeholderTextColor={theme.subtext}/>
+                    {parseFloat(allocated)>0 && parseFloat(customRate)>0 && budgetCurrency!==appData.baseCurrency && (
+                      <Text style={[s.convNote,{color:theme.warning}]}>With custom rate: {fmt(parseFloat(allocated),budgetCurrency)} = {fmtBase(parseFloat(allocated)*parseFloat(customRate))}</Text>
+                    )}
+                  </View>
+                );
+              })()}
+
               <Text style={s.lbl}>Link to Account <Text style={s.opt}>(optional)</Text></Text>
               <Text style={s.sublbl}>Budget spending tracked from this account</Text>
               <TouchableOpacity style={[s.accListItem,!linkedAccount&&s.accListItemSel]} onPress={()=>setLinkedAccount('')}>
@@ -441,6 +471,11 @@ function makeStyles(t) {
     chipTxt:{fontSize:13,color:t.text},
     chipTxtSel:{color:'#fff',fontWeight:'600'},
     convNote:{fontSize:12,color:t.subtext,marginBottom:14,marginTop:-10,fontStyle:'italic'},
+    customRateRow:{marginBottom:14},
+    customRateToggle:{flexDirection:'row',alignItems:'center',gap:8,padding:12,borderRadius:12,borderWidth:1,borderColor:t.border,backgroundColor:t.background},
+    customRateToggleOn:{backgroundColor:t.primary,borderColor:t.primary},
+    customRateTxt:{fontSize:13,fontWeight:'600',color:t.text},
+    customRateInput:{backgroundColor:t.background,borderRadius:10,padding:12,marginBottom:14},
     backRow:{flexDirection:'row',alignItems:'center',gap:6},
     backTxt:{color:t.primary,fontWeight:'600',fontSize:14},
     row:{flexDirection:'row',gap:12,marginTop:8},

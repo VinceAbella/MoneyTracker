@@ -16,11 +16,14 @@ export default function IncomeScreen({ navigation }) {
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [currency, setCurrency] = useState(appData.baseCurrency);
+  const [useCustomRate, setUseCustomRate] = useState(false);
+  const [customRate, setCustomRate] = useState('');
   const s = makeStyles(theme);
 
   const incomes = appData.incomes || [];
 
   const fmt = (a, c) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: c || appData.baseCurrency }).format(a);
+  const fmtBase = (a) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: appData.baseCurrency }).format(a);
 
   // Income pool = total income - what's been transferred to accounts
   const totalIncomePool = incomes.reduce((sum, i) => {
@@ -42,22 +45,38 @@ export default function IncomeScreen({ navigation }) {
     .filter(i => { const d = new Date(i.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
     .reduce((sum, i) => { const r = appData.exchangeRates[i.currency] || 1, br = appData.exchangeRates[appData.baseCurrency] || 1; return sum + (i.amount / r) * br; }, 0);
 
-  const resetForm = () => { setAmount(''); setCategory('Salary'); setNote(''); setDate(new Date().toISOString().split('T')[0]); setCurrency(appData.baseCurrency); };
+  const resetForm = () => { setAmount(''); setCategory('Salary'); setNote(''); setDate(new Date().toISOString().split('T')[0]); setCurrency(appData.baseCurrency); setUseCustomRate(false); setCustomRate(''); };
 
   const addIncome = () => {
     if (!amount || isNaN(parseFloat(amount))) { Alert.alert('Error', 'Enter valid amount'); return; }
     // Income goes into pool only — not directly into any account
-    const entry = { id: Date.now().toString(), amount: parseFloat(amount), category, note, date, currency };
+    const entry = { 
+      id: Date.now().toString(), 
+      amount: parseFloat(amount), 
+      category, 
+      note, 
+      date, 
+      currency,
+      customRate: useCustomRate ? parseFloat(customRate) : null
+    };
     saveData({ incomes: [entry, ...incomes] });
     resetForm();
     setAddModal(false);
   };
 
-  const openEdit = (inc) => { setEditing(inc); setAmount(String(inc.amount)); setCategory(inc.category); setNote(inc.note || ''); setDate(inc.date); setCurrency(inc.currency); setEditModal(true); };
+  const openEdit = (inc) => { setEditing(inc); setAmount(String(inc.amount)); setCategory(inc.category); setNote(inc.note || ''); setDate(inc.date); setCurrency(inc.currency); setUseCustomRate(!!inc.customRate); setCustomRate(inc.customRate ? String(inc.customRate) : ''); setEditModal(true); };
 
   const saveEdit = () => {
     if (!amount || isNaN(parseFloat(amount))) { Alert.alert('Error', 'Enter valid amount'); return; }
-    saveData({ incomes: incomes.map(i => i.id === editing.id ? { ...i, amount: parseFloat(amount), category, note, date, currency } : i) });
+    saveData({ incomes: incomes.map(i => i.id === editing.id ? { 
+      ...i, 
+      amount: parseFloat(amount), 
+      category, 
+      note, 
+      date, 
+      currency,
+      customRate: useCustomRate ? parseFloat(customRate) : null
+    } : i) });
     setEditModal(false);
   };
 
@@ -69,8 +88,8 @@ export default function IncomeScreen({ navigation }) {
   const grouped = {};
   incomes.forEach(i => { const d = new Date(i.date).toLocaleDateString(); if (!grouped[d]) grouped[d] = []; grouped[d].push(i); });
 
-  const FormContent = ({ onSave, onCancel, saveLabel }) => (
-    <ScrollView>
+  const FormContent = React.memo(({ onSave, onCancel, saveLabel, amount, setAmount, category, setCategory, note, setNote, date, setDate, currency, setCurrency, useCustomRate, setUseCustomRate, customRate, setCustomRate, appData, theme, fmt, fmtBase }) => (
+    <ScrollView keyboardShouldPersistTaps="handled">
       <View style={s.modal}>
         <Text style={s.modalTitle}>{saveLabel === 'Add Income' ? 'Add Income' : 'Edit Income'}</Text>
 
@@ -87,6 +106,30 @@ export default function IncomeScreen({ navigation }) {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
           <View style={s.chips}>{CURRENCIES.map(c => <TouchableOpacity key={c} style={[s.chip, currency === c && s.chipSel]} onPress={() => setCurrency(c)}><Text style={[s.chipTxt, currency === c && s.chipTxtSel]}>{c}</Text></TouchableOpacity>)}</View>
         </ScrollView>
+
+        {/* Custom Rate Override */}
+        <View style={s.customRateRow}>
+          <TouchableOpacity style={[s.customRateToggle, useCustomRate && s.customRateToggleOn]} onPress={()=>setUseCustomRate(!useCustomRate)}>
+            <Ionicons name={useCustomRate ? 'checkmark-circle' : 'radio-button-off'} size={18} color={useCustomRate ? '#fff' : theme.subtext}/>
+            <Text style={[s.customRateTxt, useCustomRate && {color:'#fff'}]}>Use custom exchange rate</Text>
+          </TouchableOpacity>
+        </View>
+        {useCustomRate && (
+          <View style={s.customRateInput}>
+            <Text style={s.lbl}>1 {currency} = ? {appData.baseCurrency} (on income date)</Text>
+            {(() => {
+              const currencyRate = appData.exchangeRates[currency] || 1;
+              const baseRate = appData.exchangeRates[appData.baseCurrency] || 1;
+              const liveRate = (baseRate / currencyRate).toFixed(4);
+              return liveRate && <Text style={s.convNote}>Live rate: 1 {currency} = {liveRate} {appData.baseCurrency}</Text>;
+            })()}
+            <TextInput style={s.input} value={customRate} onChangeText={setCustomRate} keyboardType="numeric" placeholder="e.g. 1.0" placeholderTextColor={theme.subtext}/>
+            {parseFloat(amount)>0 && parseFloat(customRate)>0 && currency!==appData.baseCurrency && (
+              <Text style={[s.convNote,{color:theme.warning}]}>With custom rate: {fmt(parseFloat(amount),currency)} = {fmtBase(parseFloat(amount)*parseFloat(customRate))}</Text>
+            )}
+          </View>
+        )}
+
         <Text style={s.lbl}>Note</Text>
         <TextInput style={s.input} value={note} onChangeText={setNote} placeholder="Note..." placeholderTextColor={theme.subtext} />
         <Text style={s.lbl}>Date (YYYY-MM-DD)</Text>
@@ -97,7 +140,7 @@ export default function IncomeScreen({ navigation }) {
         </View>
       </View>
     </ScrollView>
-  );
+  ));
 
   return (
     <View style={s.container}>
@@ -163,13 +206,57 @@ export default function IncomeScreen({ navigation }) {
 
       <Modal visible={addModal} animationType="slide" transparent>
         <View style={s.overlay}>
-          <FormContent onSave={addIncome} onCancel={() => { setAddModal(false); resetForm(); }} saveLabel="Add Income" />
+          <FormContent 
+            onSave={addIncome} 
+            onCancel={() => { setAddModal(false); resetForm(); }} 
+            saveLabel="Add Income"
+            amount={amount}
+            setAmount={setAmount}
+            category={category}
+            setCategory={setCategory}
+            note={note}
+            setNote={setNote}
+            date={date}
+            setDate={setDate}
+            currency={currency}
+            setCurrency={setCurrency}
+            useCustomRate={useCustomRate}
+            setUseCustomRate={setUseCustomRate}
+            customRate={customRate}
+            setCustomRate={setCustomRate}
+            appData={appData}
+            theme={theme}
+            fmt={fmt}
+            fmtBase={fmtBase}
+          />
         </View>
       </Modal>
 
       <Modal visible={editModal} animationType="slide" transparent>
         <View style={s.overlay}>
-          <FormContent onSave={saveEdit} onCancel={() => setEditModal(false)} saveLabel="Save Changes" />
+          <FormContent 
+            onSave={saveEdit} 
+            onCancel={() => setEditModal(false)} 
+            saveLabel="Save Changes"
+            amount={amount}
+            setAmount={setAmount}
+            category={category}
+            setCategory={setCategory}
+            note={note}
+            setNote={setNote}
+            date={date}
+            setDate={setDate}
+            currency={currency}
+            setCurrency={setCurrency}
+            useCustomRate={useCustomRate}
+            setUseCustomRate={setUseCustomRate}
+            customRate={customRate}
+            setCustomRate={setCustomRate}
+            appData={appData}
+            theme={theme}
+            fmt={fmt}
+            fmtBase={fmtBase}
+          />
         </View>
       </Modal>
     </View>
@@ -224,5 +311,11 @@ function makeStyles(t) {
     btnCancelTxt: { fontSize: 15, fontWeight: '600', color: t.subtext },
     btnSave: { backgroundColor: t.primary },
     btnSaveTxt: { fontSize: 15, fontWeight: '600', color: '#fff' },
+    customRateRow: { marginBottom: 14 },
+    customRateToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: t.border, backgroundColor: t.card },
+    customRateToggleOn: { backgroundColor: t.primary, borderColor: t.primary },
+    customRateTxt: { fontSize: 13, fontWeight: '600', color: t.text },
+    customRateInput: { backgroundColor: t.card, borderRadius: 10, padding: 12, marginBottom: 14 },
+    convNote: { fontSize: 11, color: t.subtext, marginTop: 4, marginBottom: 8, fontStyle: 'italic' },
   });
 }

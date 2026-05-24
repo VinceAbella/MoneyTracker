@@ -19,6 +19,11 @@
       },
       "package": "com.moneytracker.app",
       "versionCode": 1
+    },
+    "extra": {
+      "eas": {
+        "projectId": "af57b4a0-bf7e-4c72-8389-1d5a4242bdfe"
+      }
     }
   }
 }

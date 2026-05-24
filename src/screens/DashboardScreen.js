@@ -1,10 +1,10 @@
-import React, { useContext, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, Dimensions } from 'react-native';
+import React, { useContext, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { AppContext } from '../../App';
 
-const { width } = Dimensions.get('window');
+// width not used in this screen
 
 // All possible quick actions the user can pick
 const ALL_ACTIONS = [

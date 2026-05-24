@@ -209,6 +209,9 @@ export default function AccountsScreen({ navigation }) {
                           <View style={s.subInfo}>
                             <Text style={s.subName}>{sub.name}</Text>
                             {sub.purpose ? <Text style={s.subPurpose}>{sub.purpose}</Text> : null}
+                            {(sub.currency||acc.currency) !== appData.baseCurrency && (
+                              <Text style={s.subBalBase}>≈ {fmtBase(toBase(sub.balance, sub.currency||acc.currency))}</Text>
+                            )}
                           </View>
                           <Text style={s.subBal}>{fmt(sub.balance, sub.currency||acc.currency)}</Text>
                           <TouchableOpacity style={s.subEditBtn} onPress={()=>openEditSub(acc,sub)}>
@@ -376,6 +379,7 @@ function makeStyles(t) {
     opt:{fontWeight:'400',color:t.subtext},
     input:{borderWidth:1,borderColor:t.border,borderRadius:10,padding:13,marginBottom:12,fontSize:15,color:t.text,backgroundColor:t.background},
     convNote:{fontSize:12,color:t.subtext,marginBottom:10,marginTop:-8,fontStyle:'italic'},
+    subBalBase:{fontSize:12,color:t.subtext,marginTop:4,fontStyle:'italic'},
     chips:{flexDirection:'row',gap:8},
     chip:{paddingHorizontal:12,paddingVertical:7,borderRadius:18,backgroundColor:t.background,borderWidth:1,borderColor:t.border},
     chipSel:{backgroundColor:t.primary,borderColor:t.primary},
