@@ -35,6 +35,7 @@ export default function DashboardScreen({ navigation }) {
   const allTimeIncome = (appData.incomes||[]).reduce((s,i)=>s+toBase(i.amount,i.currency),0);
   const allTimeTransferred = (appData.transfers||[]).reduce((s,t)=>s+toBase(t.amount,t.currency),0);
   const incomePool = allTimeIncome - allTimeTransferred;
+  const totalAssets = accountsTotal + incomePool;
   const totalLoans = (appData.loans||[]).reduce((s,l)=>s+toBase(l.remaining,l.currency),0);
   const netWorth   = accountsTotal - totalLoans;
 
@@ -73,19 +74,20 @@ export default function DashboardScreen({ navigation }) {
             <Text style={s.balCardSub}>{appData.accounts.length} account{appData.accounts.length!==1?'s':''}</Text>
           </View>
           <View style={[s.balCard,{borderLeftWidth:1,borderLeftColor:'rgba(255,255,255,0.3)'}]}>
-            <Text style={s.balCardLbl}>Income Pool</Text>
-            <Text style={[s.balCardVal,{color:incomePool>=0?'#86efac':'#fca5a5'}]}>{fmt(incomePool)}</Text>
-            <Text style={s.balCardSub}>Available to allocate</Text>
+            <Text style={s.balCardLbl}>Total Assets</Text>
+            <Text style={[s.balCardVal,{color:totalAssets>=0?'#86efac':'#fca5a5'}]}>{fmt(totalAssets)}</Text>
+            <Text style={s.balCardSub}>Account balance plus available income</Text>
           </View>
         </View>
 
         {/* Net worth strip */}
         <View style={s.nwStrip}>
           <View style={s.nwItem}><Text style={s.nwLbl}>Net Worth</Text><Text style={[s.nwVal,{color:netWorth>=0?'#86efac':'#fca5a5'}]}>{fmt(netWorth)}</Text></View>
+          <View style={s.nwDiv}/> //Change into the income pool
+
+          <View style={s.nwItem}><Text style={s.nwLbl}>Monthly Income</Text><Text style={[s.nwVal,{color:'#86efac'}]}>{fmt(monthIncome)}</Text></View>
           <View style={s.nwDiv}/>
-          <View style={s.nwItem}><Text style={s.nwLbl}>Mo. Income</Text><Text style={[s.nwVal,{color:'#86efac'}]}>{fmt(monthIncome)}</Text></View>
-          <View style={s.nwDiv}/>
-          <View style={s.nwItem}><Text style={s.nwLbl}>Mo. Spent</Text><Text style={[s.nwVal,{color:'#fca5a5'}]}>{fmt(monthExpenses)}</Text></View>
+          <View style={s.nwItem}><Text style={s.nwLbl}>Monthly Spent</Text><Text style={[s.nwVal,{color:'#fca5a5'}]}>{fmt(monthExpenses)}</Text></View>
         </View>
       </LinearGradient>
 

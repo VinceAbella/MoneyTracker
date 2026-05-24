@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppContext } from '../../App';
 
@@ -26,24 +26,6 @@ export default function MenuScreen({ navigation }) {
     ? (parseFloat(convAmount) / (appData.exchangeRates[convFrom]||1)) * (appData.exchangeRates[convTo]||1)
     : null;
 
-  const clearData = (type) => {
-    const labels = {
-      all:'ALL Data', expenses:'Expenses', budget:'Budgets',
-      loans:'Loans', income:'Income & Transfers', investments:'Investments', accounts:'Accounts',
-    };
-    Alert.alert(`Clear ${labels[type]}`,`This will permanently delete all ${labels[type].toLowerCase()}. Cannot be undone.`,[
-      { text:'Cancel', style:'cancel' },
-      { text:'Delete', style:'destructive', onPress:() => {
-        if      (type==='all')         saveData({accounts:[],expenses:[],budget:[],loans:[],netWorth:[],incomes:[],investments:[],transfers:[],customCategories:[]});
-        else if (type==='expenses')    saveData({expenses:[]});
-        else if (type==='budget')      saveData({budget:[]});
-        else if (type==='loans')       saveData({loans:[]});
-        else if (type==='income')      saveData({incomes:[],transfers:[]});
-        else if (type==='investments') saveData({investments:[]});
-        else if (type==='accounts')    saveData({accounts:[]});
-      }},
-    ]);
-  };
 
   const navItems = [
     {title:'Income',         icon:'trending-up',     color:theme.success,   bg:theme.success+'22',   screen:'Income'},
@@ -59,24 +41,6 @@ export default function MenuScreen({ navigation }) {
   return (
     <ScrollView style={s.container} showsVerticalScrollIndicator={false}>
       <View style={s.header}><Text style={s.title}>Menu</Text></View>
-
-      {/* Quick stats */}
-      <View style={s.statsRow}>
-        <View style={s.statItem}>
-          <Text style={s.statLbl}>Balance</Text>
-          <Text style={[s.statVal,{color:theme.success}]} numberOfLines={1}>{fmtBase(totalBalance)}</Text>
-        </View>
-        <View style={s.statDiv}/>
-        <View style={s.statItem}>
-          <Text style={s.statLbl}>Pool</Text>
-          <Text style={[s.statVal,{color:theme.primary}]} numberOfLines={1}>{fmtBase(incomePool)}</Text>
-        </View>
-        <View style={s.statDiv}/>
-        <View style={s.statItem}>
-          <Text style={s.statLbl}>Expenses</Text>
-          <Text style={s.statVal}>{appData.expenses.length}</Text>
-        </View>
-      </View>
 
       {/* Appearance */}
       <View style={s.section}>
@@ -208,25 +172,7 @@ export default function MenuScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Data Management */}
-      <View style={s.section}>
-        <Text style={s.sectionTitle}>Data Management</Text>
-        {[
-          {label:'Clear Expenses',   type:'expenses',    color:theme.warning},
-          {label:'Clear Budgets',    type:'budget',      color:theme.warning},
-          {label:'Clear Loans',      type:'loans',       color:theme.warning},
-          {label:'Clear Income',     type:'income',      color:theme.warning},
-          {label:'Clear Investments',type:'investments', color:theme.warning},
-          {label:'Clear Accounts',   type:'accounts',    color:theme.danger},
-          {label:'⚠ Clear ALL Data', type:'all',         color:theme.danger},
-        ].map((item,i)=>(
-          <TouchableOpacity key={i} style={[s.clearBtn,{borderColor:item.color+'50',backgroundColor:item.color+'0D'}]} onPress={()=>clearData(item.type)}>
-            <Ionicons name="trash-outline" size={16} color={item.color}/>
-            <Text style={[s.clearBtnTxt,{color:item.color}]}>{item.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <View style={{height:40}}/>
+      <View style={{height:40}}/> 
     </ScrollView>
   );
 }
